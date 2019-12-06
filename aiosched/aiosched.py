@@ -88,12 +88,12 @@ class AsyncJobScheduler:
                 # is job cancelled?
                 with self.__lock:
                     need_cancel = job.id in self.__cancelled
-                # yes, cancel it
-                if need_cancel:
-                    with self.__lock:
-                        self.__cancelled.remove(job.id)
+                    # yes, cancel it
+                    if need_cancel:
+                        with self.__lock:
+                            self.__cancelled.remove(job.id)
                 # no, execute
-                else:
+                if not need_cancel:
                     delta = job.t - time.perf_counter()
                     if delta > 0:
                         # create sleep coro to wait until job time is came
@@ -111,12 +111,12 @@ class AsyncJobScheduler:
                     # was job canceled while we sleep?
                     with self.__lock:
                         need_cancel = job.id in self.__cancelled
-                    # yes, cancel it
-                    if need_cancel:
-                        with self.__lock:
-                            self.__cancelled.remove(job.id)
+                        # yes, cancel it
+                        if need_cancel:
+                            with self.__lock:
+                                self.__cancelled.remove(job.id)
                     # no, try executing
-                    else:
+                    if not need_cancel:
                         # has job scheduled time come?
                         if job.t <= time.perf_counter():
                             # yes - reschedule
