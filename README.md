@@ -37,7 +37,7 @@ scheduler.cancel(job2)
 loop.run_forever()
 ```
 
-or run as scheduler loop directly as coroutine:
+or run scheduler loop as coroutine:
 
 ```python
 loop = asyncio.new_event_loop()
