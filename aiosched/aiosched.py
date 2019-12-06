@@ -3,6 +3,8 @@ import threading
 import time
 import uuid
 
+MIN_INTERVAL = 0.001
+
 
 class AsyncScheduledJob:
     """
@@ -23,7 +25,7 @@ class AsyncScheduledJob:
         self.target = target
         self.args = args
         self.kwargs = kwargs
-        self.interval = interval
+        self.interval = interval if interval > MIN_INTERVAL else MIN_INTERVAL
         if target is None:
             self.t = 0
         else:
@@ -76,7 +78,7 @@ class AsyncJobScheduler:
         """
         try:
             self.__Q
-        except:
+        except AttributeError:
             await self._init_queue()
         try:
             while True:
@@ -186,7 +188,7 @@ class AsyncJobScheduler:
                 asyncio.run_coroutine_threadsafe(self._put_job(job),
                                                  loop=self.__loop)
             except AttributeError:
-                    self.__waiting.add(job)
+                self.__waiting.add(job)
         return job
 
     async def create(self, target, **kwargs):
