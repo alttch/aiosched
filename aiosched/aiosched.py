@@ -126,6 +126,9 @@ class AsyncJobScheduler:
         finally:
             self.__stopped.set()
 
+    def set_loop(self, loop=None):
+        self.__loop = loop
+
     def start(self, loop=None):
         """
         Start scheduler
@@ -133,7 +136,7 @@ class AsyncJobScheduler:
         Args:
             loop: asyncio loop
         """
-        if loop: self.__loop = loop
+        self.set_loop(loop)
         asyncio.ensure_future(self.scheduler_loop(), loop=self.__loop)
 
     def stop(self, wait=True):
@@ -159,8 +162,8 @@ class AsyncJobScheduler:
         asyncio.run_coroutine_threadsafe(self._init_queue(), loop=self.__loop)
 
     async def _init_queue(self):
-        self.__Q = asyncio.PriorityQueue()
         with self.__lock:
+            self.__Q = asyncio.PriorityQueue()
             for job in self.__waiting:
                 await self._put_job(job)
 
@@ -177,12 +180,13 @@ class AsyncJobScheduler:
             interval: interval in seconds to execute the function
         """
         job = AsyncScheduledJob(target, **kwargs)
-        try:
-            asyncio.run_coroutine_threadsafe(self._put_job(job),
-                                             loop=self.__loop)
-        except AttributeError:
-            with self.__lock:
-                self.__waiting.add(job)
+        with self.__lock:
+            try:
+                self.__Q
+                asyncio.run_coroutine_threadsafe(self._put_job(job),
+                                                 loop=self.__loop)
+            except AttributeError:
+                    self.__waiting.add(job)
         return job
 
     async def create(self, target, **kwargs):
