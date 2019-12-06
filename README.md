@@ -1,4 +1,4 @@
-# aiosched - asyncio jobs scheduler
+# aiosched - Python asyncio jobs scheduler
 
 Executes specified asyncio jobs with a chosen interval. Has relatively small
 number of features but it's fast.
