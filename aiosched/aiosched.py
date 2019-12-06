@@ -73,7 +73,7 @@ class AsyncJobScheduler:
         self.__lock = threading.RLock()
         self.__stopped = threading.Event()
         self.__loop = None
-        self.sleep_coro = None
+        self.__sleep_coro = None
 
     async def scheduler_loop(self):
         """
@@ -100,13 +100,13 @@ class AsyncJobScheduler:
                     if delta > 0:
                         with self.__lock:
                             coro = asyncio.sleep(delta, loop=self.__loop)
-                            self.sleep_coro = asyncio.ensure_future(coro)
+                            self.__sleep_coro = asyncio.ensure_future(coro)
                         try:
-                            await self.sleep_coro
+                            await self.__sleep_coro
                         except asyncio.CancelledError:
                             pass
                         finally:
-                            self.sleep_coro = None
+                            self.__sleep_coro = None
                     if job.t <= time.perf_counter():
                         job.reschedule()
                         loop = self.__loop if self.__loop else \
@@ -196,7 +196,7 @@ class AsyncJobScheduler:
         with self.__lock:
             self.__Q.put_nowait(job)
             try:
-                self.sleep_coro.cancel()
+                self.__sleep_coro.cancel()
             except:
                 pass
 
@@ -213,6 +213,6 @@ class AsyncJobScheduler:
             else:
                 self.__cancelled.add(job.id)
             try:
-                self.sleep_coro.cancel()
+                self.__sleep_coro.cancel()
             except:
                 pass
