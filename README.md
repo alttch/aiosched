@@ -37,6 +37,15 @@ scheduler.cancel(job2)
 loop.run_forever()
 ```
 
+or run as scheduler loop directly as coroutine:
+
+```python
+loop = asyncio.new_event_loop()
+job1 = scheduler.create_threadsafe(target=test1, args=(1,2,3), interval=0.1)
+job2 = scheduler.create_threadsafe(target=test2, interval=0.1)
+loop.run_until_complete(scheduler.scheduler_loop())
+```
+
 ## Install
 
 ```shell
