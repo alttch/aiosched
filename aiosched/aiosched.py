@@ -62,12 +62,7 @@ class AsyncJobScheduler:
     Job scheduler
     """
 
-    def __init__(self, poll_delay=0.01):
-        """
-        Args:
-            pooll_delay: delay between operations (default: 0.01 sec)
-        """
-        self.poll_delay = poll_delay
+    def __init__(self):
         self.__waiting = set()
         self.__cancelled = set()
         self.__lock = threading.RLock()
@@ -86,18 +81,24 @@ class AsyncJobScheduler:
         try:
             while True:
                 job = await self.__Q.get()
+                # empty target = stop loop
                 if job.target is None:
                     self.__Q.task_done()
                     break
+                # is job cancelled?
                 with self.__lock:
                     need_cancel = job.id in self.__cancelled
+                # yes, cancel it
                 if need_cancel:
                     with self.__lock:
                         self.__cancelled.remove(job.id)
+                # no, execute
                 else:
-                    self.__Q.task_done()
                     delta = job.t - time.perf_counter()
                     if delta > 0:
+                        # create sleep coro to wait until job time is came
+                        # sleep coro is canceled when new job is created or
+                        # canceled
                         with self.__lock:
                             coro = asyncio.sleep(delta, loop=self.__loop)
                             self.__sleep_coro = asyncio.ensure_future(coro)
@@ -107,13 +108,27 @@ class AsyncJobScheduler:
                             pass
                         finally:
                             self.__sleep_coro = None
-                    if job.t <= time.perf_counter():
-                        job.reschedule()
-                        loop = self.__loop if self.__loop else \
-                                asyncio.get_event_loop()
-                        loop.create_task(job.target(*job.args, **job.kwargs))
-                    await self.__Q.put(job)
-                await asyncio.sleep(self.poll_delay)
+                    # was job canceled while we sleep?
+                    with self.__lock:
+                        need_cancel = job.id in self.__cancelled
+                    # yes, cancel it
+                    if need_cancel:
+                        with self.__lock:
+                            self.__cancelled.remove(job.id)
+                    # no, try executing
+                    else:
+                        # has job scheduled time come?
+                        if job.t <= time.perf_counter():
+                            # yes - reschedule
+                            job.reschedule()
+                            loop = self.__loop if self.__loop else \
+                                    asyncio.get_event_loop()
+                            # and run it
+                            loop.create_task(job.target(*job.args,
+                                                        **job.kwargs))
+                        # put job back to the queue
+                        await self.__Q.put(job)
+                self.__Q.task_done()
         finally:
             self.__stopped.set()
 
