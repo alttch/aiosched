@@ -3,6 +3,8 @@
 Executes specified asyncio jobs with a chosen interval. Has relatively small
 number of features but it's fast.
 
+<img src="https://img.shields.io/pypi/v/aiosched.svg" /> <img src="https://img.shields.io/badge/license-MIT-green" /> <img src="https://img.shields.io/badge/python-3.5%20%7C%203.6%20%7C%203.7-blue.svg" />
+
 ## Why one more scheduler?
 
 * it's extremely accurate and fast
