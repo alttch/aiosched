@@ -112,9 +112,7 @@ class AsyncJobScheduler:
                 job = await self.__Q.get()
                 try:
                     # empty target = stop loop
-                    if job.target is None:
-                        self.__Q.task_done()
-                        break
+                    if job.target is None: break
                     # is job cancelled?
                     if not job.active: continue
                     # no, execute
