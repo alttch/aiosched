@@ -45,6 +45,14 @@ class AsyncScheduledJob:
         else:
             self.schedule(at=timer)
         self.id = str(uuid.uuid4())
+        self.__active = True
+
+    def cancel(self):
+        self.__active = False
+
+    @property
+    def active(self):
+        return self.__active
 
     def schedule(self, at=0):
         """
@@ -83,7 +91,6 @@ class AsyncJobScheduler:
 
     def __init__(self):
         self.__waiting = set()
-        self.__cancelled = set()
         self.__lock = threading.RLock()
         self.__stopped = threading.Event()
         self.__loop = None
@@ -106,10 +113,7 @@ class AsyncJobScheduler:
                         self.__Q.task_done()
                         break
                     # is job cancelled?
-                    with self.__lock:
-                        if job.id in self.__cancelled:
-                            self.__cancelled.remove(job.id)
-                            continue
+                    if not job.active: continue
                     # no, execute
                     delta = job.t - time.perf_counter()
                     if delta > 0:
@@ -126,11 +130,7 @@ class AsyncJobScheduler:
                         finally:
                             self.__sleep_coro = None
                         # was job canceled while we sleep?
-                        with self.__lock:
-                            if job.id in self.__cancelled:
-                                # yes, cancel it
-                                self.__cancelled.remove(job.id)
-                                continue
+                        if not job.active: continue
                     # no, try executing
                     # has job scheduled time come?
                     if delta <= 0 or job.t <= time.perf_counter():
@@ -183,12 +183,6 @@ class AsyncJobScheduler:
             except:
                 pass
         if wait: self.__stopped.wait(timeout=None if wait is True else wait)
-
-    def cancel_all(self):
-        """
-        Cancel all jobs in queue
-        """
-        asyncio.run_coroutine_threadsafe(self._init_queue(), loop=self.__loop)
 
     async def _init_queue(self):
         with self.__lock:
@@ -246,15 +240,9 @@ class AsyncJobScheduler:
         """
         Cancel scheduled job
 
+        Equal to job.cancel()
+
         Args:
-            job: job object or job id
+            job: job object
         """
-        with self.__lock:
-            if isinstance(job, str):
-                self.__cancelled.add(job)
-            else:
-                self.__cancelled.add(job.id)
-            try:
-                self.__sleep_coro.cancel()
-            except:
-                pass
+        return job.cancel()

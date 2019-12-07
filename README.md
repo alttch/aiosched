@@ -37,6 +37,9 @@ job2 = scheduler.create_threadsafe(target=test2, interval=0.5)
 job3 = scheduler.create_threadsafe(target=test3, number=1, timer=5)
 # cancel job 2
 scheduler.cancel(job2)
+# equal to
+job2.cancel()
+
 loop.run_forever()
 ```
 
