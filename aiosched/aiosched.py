@@ -140,8 +140,9 @@ class AsyncJobScheduler:
                         loop = self.__loop if self.__loop else \
                                 asyncio.get_event_loop()
                         # and run it
-                        logger.debug('scheduler {} executing job {}'.format(
-                            self.id, job.id))
+                        logger.debug(
+                            'scheduler {} executing job {}, target: {}'.format(
+                                self.id, job.id, job.target))
                         loop.create_task(job.target(*job.args, **job.kwargs))
                         if job.number > 0:
                             job.number -= 1
