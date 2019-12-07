@@ -157,6 +157,11 @@ class AsyncJobScheduler:
                                              loop=self.__loop)
         except AttributeError:
             raise RuntimeError('scheduler is not started')
+        with self.__lock:
+            try:
+                self.__sleep_coro.cancel()
+            except:
+                pass
         if wait: self.__stopped.wait(timeout=None if wait is True else wait)
 
     def cancel_all(self):
