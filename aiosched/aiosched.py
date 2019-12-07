@@ -83,48 +83,50 @@ class AsyncJobScheduler:
         try:
             while True:
                 job = await self.__Q.get()
-                # empty target = stop loop
-                if job.target is None:
-                    self.__Q.task_done()
-                    break
-                # is job cancelled?
-                with self.__lock:
-                    if job.id in self.__cancelled:
-                        self.__cancelled.remove(job.id)
-                        continue
-                # no, execute
-                delta = job.t - time.perf_counter()
-                if delta > 0:
-                    # create sleep coro to wait until job time is came
-                    # sleep coro is canceled when new job is created or
-                    # canceled
-                    with self.__lock:
-                        coro = asyncio.sleep(delta, loop=self.__loop)
-                        self.__sleep_coro = asyncio.ensure_future(coro)
-                    try:
-                        await self.__sleep_coro
-                    except asyncio.CancelledError:
-                        pass
-                    finally:
-                        self.__sleep_coro = None
-                    # was job canceled while we sleep?
+                try:
+                    # empty target = stop loop
+                    if job.target is None:
+                        self.__Q.task_done()
+                        break
+                    # is job cancelled?
                     with self.__lock:
                         if job.id in self.__cancelled:
-                            # yes, cancel it
                             self.__cancelled.remove(job.id)
                             continue
-                # no, try executing
-                # has job scheduled time come?
-                if delta <= 0 or job.t <= time.perf_counter():
-                    # yes - reschedule
-                    job.reschedule()
-                    loop = self.__loop if self.__loop else \
-                            asyncio.get_event_loop()
-                    # and run it
-                    loop.create_task(job.target(*job.args, **job.kwargs))
-                # put job back to the queue
-                await self.__Q.put(job)
-                self.__Q.task_done()
+                    # no, execute
+                    delta = job.t - time.perf_counter()
+                    if delta > 0:
+                        # create sleep coro to wait until job time is came
+                        # sleep coro is canceled when new job is created or
+                        # canceled
+                        with self.__lock:
+                            coro = asyncio.sleep(delta, loop=self.__loop)
+                            self.__sleep_coro = asyncio.ensure_future(coro)
+                        try:
+                            await self.__sleep_coro
+                        except asyncio.CancelledError:
+                            pass
+                        finally:
+                            self.__sleep_coro = None
+                        # was job canceled while we sleep?
+                        with self.__lock:
+                            if job.id in self.__cancelled:
+                                # yes, cancel it
+                                self.__cancelled.remove(job.id)
+                                continue
+                    # no, try executing
+                    # has job scheduled time come?
+                    if delta <= 0 or job.t <= time.perf_counter():
+                        # yes - reschedule
+                        job.reschedule()
+                        loop = self.__loop if self.__loop else \
+                                asyncio.get_event_loop()
+                        # and run it
+                        loop.create_task(job.target(*job.args, **job.kwargs))
+                    # put job back to the queue
+                    await self.__Q.put(job)
+                finally:
+                    self.__Q.task_done()
         finally:
             self.__stopped.set()
 
