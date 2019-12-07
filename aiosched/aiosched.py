@@ -95,12 +95,13 @@ class AsyncJobScheduler:
     Job scheduler
     """
 
-    def __init__(self):
+    def __init__(self, id=None):
         self.__waiting = set()
         self.__lock = threading.RLock()
         self.__stopped = threading.Event()
         self.__loop = None
         self.__sleep_coro = None
+        self.id = id if id is not None else str(uuid.uuid4())
 
     async def scheduler_loop(self):
         """
@@ -111,7 +112,7 @@ class AsyncJobScheduler:
         except AttributeError:
             await self._init_queue()
         try:
-            logger.debug('scheduler started')
+            logger.debug('scheduler {} started'.format(self.id))
             while True:
                 job = await self.__Q.get()
                 try:
@@ -146,20 +147,21 @@ class AsyncJobScheduler:
                         loop = self.__loop if self.__loop else \
                                 asyncio.get_event_loop()
                         # and run it
-                        logger.debug('scheduler executing job {}'.format(
-                            job.id))
+                        logger.debug('scheduler {} executing job {}'.format(
+                            self.id, job.id))
                         loop.create_task(job.target(*job.args, **job.kwargs))
                     # put job back to the queue
                     if job.number > 0:
                         job.number -= 1
                         if not job.number: continue
-                    logger.debug('scheduler requeueing job {}'.format(job.id))
+                    logger.debug('scheduler {} requeueing job {}'.format(
+                        self.id, job.id))
                     await self.__Q.put(job)
                 finally:
                     self.__Q.task_done()
         finally:
             self.__stopped.set()
-            logger.debug('scheduler stopped')
+            logger.debug('scheduler {} stopped'.format(self.id))
 
     def set_loop(self, loop=None):
         self.__loop = loop
@@ -241,7 +243,7 @@ class AsyncJobScheduler:
 
     async def _put_job(self, job):
         with self.__lock:
-            logger.debug('scheduler new job {}'.format(job.id))
+            logger.debug('scheduler {} new job {}'.format(self.id, job.id))
             self.__Q.put_nowait(job)
             try:
                 self.__sleep_coro.cancel()
