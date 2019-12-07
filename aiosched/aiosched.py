@@ -14,31 +14,48 @@ class AsyncScheduledJob:
     methods.
     """
 
-    def __init__(self, target, args=(), kwargs={}, interval=0):
+    def __init__(self,
+                 target,
+                 args=(),
+                 kwargs={},
+                 interval=0,
+                 timer=0,
+                 number=0):
         """
         Args:
             target: coroutine function
             args: tuple with functions args
             kwargs: dict with function kwargs
             interval: interval in seconds to execute the function
+            timer: job start timer
+            number: how many times run job (0 = unlimited)
         """
         self.target = target
         self.args = args
         self.kwargs = kwargs
+        if timer > 0:
+            if not interval: interval = timer
+            run_on_create = False
+        else:
+            run_on_create = True
         self.interval = interval if interval > MIN_INTERVAL else MIN_INTERVAL
+        self.number = number
         if target is None:
             self.t = 0
         else:
-            self.schedule()
+            self.schedule(at=timer)
         self.id = str(uuid.uuid4())
 
-    def schedule(self):
+    def schedule(self, at=0):
         """
-        Schedule job execution for "right now"
+        Schedule first job execution
 
         Called automatically when object is created
+
+        Args:
+            at: schedule job seconds from now
         """
-        self.t = time.perf_counter()
+        self.t = time.perf_counter() + at
 
     def reschedule(self):
         """
@@ -124,6 +141,9 @@ class AsyncJobScheduler:
                         # and run it
                         loop.create_task(job.target(*job.args, **job.kwargs))
                     # put job back to the queue
+                    if job.number > 0:
+                        job.number -= 1
+                        if not job.number: continue
                     await self.__Q.put(job)
                 finally:
                     self.__Q.task_done()
