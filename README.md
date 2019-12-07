@@ -30,7 +30,7 @@ from aiosched import scheduler
 
 loop = asyncio.new_event_loop()
 scheduler.start(loop=loop)
-# tsks can be added before actual start in pending mode
+# jobs can be added before actual start in pending mode
 job1 = scheduler.create_threadsafe(target=test1, args=(1, 2, 3), interval=1)
 job2 = scheduler.create_threadsafe(target=test2, interval=0.5)
 # run job once after 5 seconds
