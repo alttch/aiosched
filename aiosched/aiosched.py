@@ -138,9 +138,8 @@ class AsyncJobScheduler:
                         loop = self.__loop if self.__loop else \
                                 asyncio.get_event_loop()
                         # and run it
-                        logger.debug(
-                            'scheduler {} executing job {}, target: {}'.format(
-                                self.id, job.id, job.target))
+                        logger.debug('scheduler {} executing job {}'.format(
+                            self.id, job.id))
                         loop.create_task(job.target(*job.args, **job.kwargs))
                         if job.number > 0:
                             job.number -= 1
@@ -182,7 +181,7 @@ class AsyncJobScheduler:
                 AsyncScheduledJob(target=None)),
                                              loop=self.__loop)
         except AttributeError:
-            raise RuntimeError('scheduler is not started')
+            raise RuntimeError('scheduler {} is not started'.format(self.id))
         with self.__lock:
             try:
                 self.__sleep_coro.cancel()
@@ -236,7 +235,8 @@ class AsyncJobScheduler:
 
     async def _put_job(self, job):
         with self.__lock:
-            logger.debug('scheduler {} new job {}'.format(self.id, job.id))
+            logger.debug('scheduler {} new job {}, target: {}'.format(
+                self.id, job.id, job.target))
             self.__Q.put_nowait(job)
             try:
                 self.__sleep_coro.cancel()
