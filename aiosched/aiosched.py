@@ -95,7 +95,7 @@ class AsyncJobScheduler:
         self.__lock = threading.RLock()
         self.__stopped = threading.Event()
         self.__loop = None
-        self.__sleep_future = None
+        self.__sleep_task = None
         self.id = id if id is not None else str(uuid.uuid4())
 
     async def scheduler_loop(self):
@@ -123,13 +123,13 @@ class AsyncJobScheduler:
                         # canceled
                         with self.__lock:
                             coro = asyncio.sleep(delta, loop=self.__loop)
-                            self.__sleep_future = asyncio.ensure_future(coro)
+                            self.__sleep_task = asyncio.ensure_future(coro)
                         try:
-                            await self.__sleep_future
+                            await self.__sleep_task
                         except asyncio.CancelledError:
                             pass
                         finally:
-                            self.__sleep_future = None
+                            self.__sleep_task = None
                         # was job canceled while we sleep?
                         if not job.active: continue
                     # no, try executing
@@ -184,7 +184,7 @@ class AsyncJobScheduler:
             raise RuntimeError('scheduler {} is not started'.format(self.id))
         with self.__lock:
             try:
-                self.__sleep_future.cancel()
+                self.__sleep_task.cancel()
             except:
                 pass
         if wait: self.__stopped.wait(timeout=None if wait is True else wait)
@@ -239,7 +239,7 @@ class AsyncJobScheduler:
                 self.id, job.id, job.target))
             self.__Q.put_nowait(job)
             try:
-                self.__sleep_future.cancel()
+                self.__sleep_task.cancel()
             except:
                 pass
 
