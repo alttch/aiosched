@@ -4,7 +4,11 @@ import threading
 import time
 import uuid
 
-MIN_INTERVAL = 0.001
+from types import SimpleNamespace
+
+_data = SimpleNamespace(min_interval=0.001, debug=False)
+
+_data.min_interval = 0.001
 
 logger = logging.getLogger('aiosched')
 
@@ -37,7 +41,8 @@ class AsyncScheduledJob:
         self.target = target
         self.args = args
         self.kwargs = kwargs
-        self.interval = interval if interval > MIN_INTERVAL else MIN_INTERVAL
+        self.interval = interval if \
+                interval > _data.min_interval else _data.min_interval
         self.number = number
         if target is None:
             self.t = 0
@@ -47,7 +52,7 @@ class AsyncScheduledJob:
 
     def cancel(self):
         self.__active = False
-        logger.debug('job {} canceled'.format(self.id))
+        if _data.debug: logger.debug('job {} canceled'.format(self.id))
 
     @property
     def active(self):
@@ -63,14 +68,14 @@ class AsyncScheduledJob:
             at: schedule job seconds from now
         """
         self.t = time.perf_counter() + at
-        logger.debug('job {} scheduled'.format(self.id))
+        if _data.debug: logger.debug('job {} scheduled'.format(self.id))
 
     def reschedule(self):
         """
         Re-schedule job for the next interval
         """
         self.t += self.interval
-        logger.debug('job {} re-scheduled'.format(self.id))
+        if _data.debug: logger.debug('job {} re-scheduled'.format(self.id))
 
     def __cmp__(self, other):
         return cmp(self.t, other.t) if \
@@ -107,7 +112,7 @@ class AsyncJobScheduler:
         except AttributeError:
             await self._init_queue()
         try:
-            logger.debug('scheduler {} started'.format(self.id))
+            if _data.debug: logger.debug('scheduler {} started'.format(self.id))
             while True:
                 job = await self.__Q.get()
                 try:
@@ -138,22 +143,24 @@ class AsyncJobScheduler:
                         loop = self.__loop if self.__loop else \
                                 asyncio.get_event_loop()
                         # and run it
-                        logger.debug('scheduler {} executing job {}'.format(
-                            self.id, job.id))
+                        if _data.debug:
+                            logger.debug('scheduler {} executing job {}'.format(
+                                self.id, job.id))
                         loop.create_task(job.target(*job.args, **job.kwargs))
                         if job.number > 0:
                             job.number -= 1
                             if job.number == 0: continue
                         job.reschedule()
                     # put job back to the queue
-                    logger.debug('scheduler {} requeueing job {}'.format(
-                        self.id, job.id))
+                    if _data.debug:
+                        logger.debug('scheduler {} requeueing job {}'.format(
+                            self.id, job.id))
                     await self.__Q.put(job)
                 finally:
                     self.__Q.task_done()
         finally:
             self.__stopped.set()
-            logger.debug('scheduler {} stopped'.format(self.id))
+            if _data.debug: logger.debug('scheduler {} stopped'.format(self.id))
 
     def set_loop(self, loop=None):
         self.__loop = loop
@@ -235,8 +242,9 @@ class AsyncJobScheduler:
 
     async def _put_job(self, job):
         with self.__lock:
-            logger.debug('scheduler {} new job {}, target: {}'.format(
-                self.id, job.id, job.target))
+            if _data.debug:
+                logger.debug('scheduler {} new job {}, target: {}'.format(
+                    self.id, job.id, job.target))
             self.__Q.put_nowait(job)
             try:
                 self.__sleep_task.cancel()
