@@ -152,7 +152,7 @@ class AsyncJobScheduler:
                         loop.create_task(job.target(*job.args, **job.kwargs))
                         if job.number > 0:
                             job.number -= 1
-                            if not job.number: continue
+                            if job.number == 0: continue
                     # put job back to the queue
                     logger.debug('scheduler {} requeueing job {}'.format(
                         self.id, job.id))
