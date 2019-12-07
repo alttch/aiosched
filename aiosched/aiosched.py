@@ -37,11 +37,6 @@ class AsyncScheduledJob:
         self.target = target
         self.args = args
         self.kwargs = kwargs
-        if timer > 0:
-            if not interval: interval = timer
-            run_on_create = False
-        else:
-            run_on_create = True
         self.interval = interval if interval > MIN_INTERVAL else MIN_INTERVAL
         self.number = number
         if target is None:
