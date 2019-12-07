@@ -137,8 +137,6 @@ class AsyncJobScheduler:
                     # no, try executing
                     # has job scheduled time come?
                     if delta <= 0 or job.t <= time.perf_counter():
-                        # yes - reschedule
-                        job.reschedule()
                         loop = self.__loop if self.__loop else \
                                 asyncio.get_event_loop()
                         # and run it
@@ -148,6 +146,7 @@ class AsyncJobScheduler:
                         if job.number > 0:
                             job.number -= 1
                             if job.number == 0: continue
+                        job.reschedule()
                     # put job back to the queue
                     logger.debug('scheduler {} requeueing job {}'.format(
                         self.id, job.id))
