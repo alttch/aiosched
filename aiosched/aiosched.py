@@ -127,8 +127,8 @@ class AsyncJobScheduler:
                         # sleep coro is canceled when new job is created or
                         # canceled
                         with self.__lock:
-                            coro = asyncio.sleep(delta, loop=self.__loop)
-                            self.__sleep_task = asyncio.ensure_future(coro)
+                            self.__sleep_task = asyncio.ensure_future(
+                                asyncio.sleep(delta))
                         try:
                             await self.__sleep_task
                         except asyncio.CancelledError:
