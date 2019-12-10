@@ -189,11 +189,7 @@ class AsyncJobScheduler:
                                              loop=self.__loop)
         except AttributeError:
             raise RuntimeError('scheduler {} is not started'.format(self.id))
-        with self.__lock:
-            try:
-                self.__sleep_task.cancel()
-            except:
-                pass
+        asyncio.run_coroutine_threadsafe(self._cancel_sleep(), loop=self.__loop)
         if wait: self.__stopped.wait(timeout=None if wait is True else wait)
 
     async def _init_queue(self):
@@ -239,6 +235,12 @@ class AsyncJobScheduler:
         job = AsyncScheduledJob(target, **kwargs)
         await self._put_job(job)
         return job
+
+    async def _cancel_sleep(self):
+        try:
+            self.__sleep_task.cancel()
+        except:
+            pass
 
     async def _put_job(self, job):
         with self.__lock:
