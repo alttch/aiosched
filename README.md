@@ -26,8 +26,6 @@ async def test2():
 async def test3():
     print('JOB3')
 
-from aiosched import scheduler
-
 loop = asyncio.new_event_loop()
 scheduler.start(loop=loop)
 # jobs can be added before actual start in pending mode
