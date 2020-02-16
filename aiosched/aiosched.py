@@ -8,8 +8,6 @@ from types import SimpleNamespace
 
 _data = SimpleNamespace(min_interval=0.001, debug=False)
 
-_data.min_interval = 0.001
-
 logger = logging.getLogger('aiosched')
 
 
